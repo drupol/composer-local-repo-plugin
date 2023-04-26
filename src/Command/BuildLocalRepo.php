@@ -23,7 +23,7 @@ final class BuildLocalRepo extends BaseCommand
             ->setName('build-local-repo')
             ->setDescription('Create local composer repositories for offline use')
             ->addArgument('repo-dir', InputArgument::REQUIRED, 'Target directory to create repo in')
-            ->addOption('no-dev', null, InputOption::VALUE_OPTIONAL, 'Should we disable packages from `require-dev` ?', false);
+            ->addOption('no-dev', null, InputOption::VALUE_NONE, 'Disables installation of require-dev packages.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
