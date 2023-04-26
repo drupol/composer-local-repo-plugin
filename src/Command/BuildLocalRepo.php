@@ -102,7 +102,7 @@ final class BuildLocalRepo extends BaseCommand
             yield $loader->load($info);
         }
 
-        if (true === $input->getOption('no-dev')) {
+        if (false === $input->getOption('no-dev')) {
             foreach ($data['packages-dev'] ?? [] as $info) {
                 yield $loader->load($info);
             }
