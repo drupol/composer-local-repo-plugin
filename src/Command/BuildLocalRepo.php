@@ -8,6 +8,7 @@ use Composer\Command\BaseCommand;
 use Composer\Json\JsonFile;
 use Composer\Package\CompletePackage;
 use Composer\Package\Loader\ArrayLoader;
+use Composer\Util\Filesystem;
 use Generator;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -30,6 +31,7 @@ final class BuildLocalRepo extends BaseCommand
     {
         $composer = $this->requireComposer(true, true);
         $downloadManager = $composer->getDownloadManager();
+        $fs = new Filesystem();
 
         $packages = [];
         foreach ($this->iterLockedPackages($input) as $package) {
@@ -55,11 +57,6 @@ final class BuildLocalRepo extends BaseCommand
                 ->download(
                     $package,
                     sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $package->getPrettyVersion()),
-                )
-                ->then(
-                    $output->writeln(
-                        sprintf('Package %s has been downloaded...', $package->getPrettyName())
-                    )
                 );
 
             $downloadManager
@@ -69,9 +66,9 @@ final class BuildLocalRepo extends BaseCommand
                     sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $package->getPrettyVersion()),
                 )
                 ->then(
-                    $output->writeln(
-                        sprintf('Package %s has been installed...', $package->getPrettyName())
-                    )
+                    static function () use ($fs, $input, $package) {
+                        $fs->removeDirectory(sprintf('%s/%s/%s/.git', $input->getArgument('repo-dir'), $package->getName(), $package->getPrettyVersion()));
+                    }
                 );
         }
 
