@@ -40,14 +40,14 @@ final class BuildLocalRepo extends BaseCommand
                     'name' => $package->getPrettyName(),
                     'version' => $package->getPrettyVersion(),
                     'dist' => [
-                        'url' => sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $package->getPrettyVersion()),
-                        'type' => 'path',
                         'reference' => $package->getDistReference(),
+                        'type' => 'path',
+                        'url' => sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $package->getPrettyVersion()),
                     ],
                     'source' => [
+                        'reference' => $package->getSourceReference() ?? $package->getDistReference(),
                         'type' => 'path',
                         'url' => sprintf('%s/%s', $input->getArgument('repo-dir'), $package->getName()),
-                        'reference' => $package->getSourceReference() ?? $package->getDistReference(),
                     ],
                 ],
             ];
@@ -66,7 +66,7 @@ final class BuildLocalRepo extends BaseCommand
                     sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $package->getPrettyVersion()),
                 )
                 ->then(
-                    static function () use ($fs, $input, $package) {
+                    static function () use ($fs, $input, $package): void {
                         $fs->removeDirectory(sprintf('%s/%s/%s/.git', $input->getArgument('repo-dir'), $package->getName(), $package->getPrettyVersion()));
                     }
                 );
