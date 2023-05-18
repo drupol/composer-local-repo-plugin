@@ -34,22 +34,26 @@ final class BuildLocalRepo extends BaseCommand
         $fs = new Filesystem();
 
         $packages = [];
-        foreach ($this->iterLockedPackages($input) as $package) {
-            $packages[$package->getPrettyName()] = [
-                $package->getPrettyVersion() => [
-                    'name' => $package->getPrettyName(),
-                    'version' => $package->getPrettyVersion(),
-                    'dist' => [
-                        'reference' => $package->getDistReference(),
-                        'type' => 'path',
-                        'url' => sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $package->getPrettyVersion()),
-                    ],
-                    'source' => [
-                        'reference' => $package->getSourceReference() ?? $package->getDistReference(),
-                        'type' => 'path',
-                        'url' => sprintf('%s/%s', $input->getArgument('repo-dir'), $package->getName()),
-                    ],
+        foreach ($this->iterLockedPackages($input) as [$packageInfo, $package]) {
+            $infos = [
+                'name' => $package->getPrettyName(),
+                'version' => $package->getPrettyVersion(),
+                'dist' => [
+                    'reference' => $package->getDistReference(),
+                    'type' => 'path',
+                    'url' => sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $package->getPrettyVersion()),
                 ],
+                'source' => [
+                    'reference' => $package->getSourceReference() ?? $package->getDistReference(),
+                    'type' => 'path',
+                    'url' => sprintf('%s/%s', $input->getArgument('repo-dir'), $package->getName()),
+                ],
+            ] + $packageInfo;
+
+            ksort($infos);
+
+            $packages[$package->getPrettyName()] = [
+                $package->getPrettyVersion() => $infos,
             ];
 
             $downloadManager
@@ -71,6 +75,8 @@ final class BuildLocalRepo extends BaseCommand
                     }
                 );
         }
+
+        ksort($packages);
 
         (new JsonFile(sprintf('%s/packages.json', $input->getArgument('repo-dir'))))->write(['packages' => $packages]);
 
@@ -96,12 +102,12 @@ final class BuildLocalRepo extends BaseCommand
         $loader = new ArrayLoader(null, true);
 
         foreach ($data['packages'] ?? [] as $info) {
-            yield $loader->load($info);
+            yield [$info, $loader->load($info)];
         }
 
         if (false === $input->getOption('no-dev')) {
             foreach ($data['packages-dev'] ?? [] as $info) {
-                yield $loader->load($info);
+                yield [$info, $loader->load($info)];
             }
         }
     }
