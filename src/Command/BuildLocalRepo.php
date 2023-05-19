@@ -53,7 +53,7 @@ final class BuildLocalRepo extends BaseCommand
             ksort($infos);
 
             $packages[$package->getPrettyName()] = [
-                $package->getPrettyVersion() => $infos,
+                $package->getVersion() => $infos,
             ];
 
             $downloadManager
@@ -76,7 +76,7 @@ final class BuildLocalRepo extends BaseCommand
                 );
         }
 
-        ksort($packages);
+
 
         (new JsonFile(sprintf('%s/packages.json', $input->getArgument('repo-dir'))))->write(['packages' => $packages]);
 
