@@ -36,16 +36,23 @@ final class BuildLocalRepo extends BaseCommand
         $packages = [];
         foreach ($this->iterLockedPackages($input) as [$packageInfo, $package]) {
             $version = $package->getVersion();
+            // While Composer repositories only really require `name`, `version` and `source`/`dist` fields,
+            // we will use the original contents of the package’s entry from `composer.lock`, modifying just the sources.
+            // Package entries in Composer repositories correspond to `composer.json` files [1]
+            // and Composer appears to use them when regenerating the lockfile.
+            // If we just used the minimal info, stuff like `autoloading` or `bin` programs would be broken.
+            //
+            // We cannot use `source` since Composer does not support path sources:
+            //     "PathDownloader" is a dist type downloader and can not be used to download source
+            //
+            // [1]: https://getcomposer.org/doc/05-repositories.md#packages>
+            unset($packageInfo['source']);
+
             $infos = [
                 'dist' => [
                     'reference' => $package->getDistReference(),
                     'type' => 'path',
                     'url' => sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $version),
-                ],
-                'source' => [
-                    'reference' => $package->getSourceReference() ?? $package->getDistReference(),
-                    'type' => 'path',
-                    'url' => sprintf('%s/%s', $input->getArgument('repo-dir'), $package->getName()),
                 ],
             ] + $packageInfo;
 
