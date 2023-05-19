@@ -35,13 +35,12 @@ final class BuildLocalRepo extends BaseCommand
 
         $packages = [];
         foreach ($this->iterLockedPackages($input) as [$packageInfo, $package]) {
+            $version = $package->getVersion();
             $infos = [
-                'name' => $package->getPrettyName(),
-                'version' => $package->getPrettyVersion(),
                 'dist' => [
                     'reference' => $package->getDistReference(),
                     'type' => 'path',
-                    'url' => sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $package->getPrettyVersion()),
+                    'url' => sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $version),
                 ],
                 'source' => [
                     'reference' => $package->getSourceReference() ?? $package->getDistReference(),
@@ -53,25 +52,25 @@ final class BuildLocalRepo extends BaseCommand
             ksort($infos);
 
             $packages[$package->getPrettyName()] = [
-                $package->getVersion() => $infos,
+                $version => $infos,
             ];
 
             $downloadManager
                 ->setPreferSource(true)
                 ->download(
                     $package,
-                    sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $package->getPrettyVersion()),
+                    sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $version),
                 );
 
             $downloadManager
                 ->setPreferSource(true)
                 ->install(
                     $package,
-                    sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $package->getPrettyVersion()),
+                    sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $version),
                 )
                 ->then(
-                    static function () use ($fs, $input, $package): void {
-                        $fs->removeDirectory(sprintf('%s/%s/%s/.git', $input->getArgument('repo-dir'), $package->getName(), $package->getPrettyVersion()));
+                    static function () use ($fs, $input, $package, $version): void {
+                        $fs->removeDirectory(sprintf('%s/%s/%s/.git', $input->getArgument('repo-dir'), $package->getName(), $version));
                     }
                 );
         }
