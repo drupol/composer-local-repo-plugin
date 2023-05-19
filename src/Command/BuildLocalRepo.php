@@ -48,18 +48,14 @@ final class BuildLocalRepo extends BaseCommand
             // [1]: https://getcomposer.org/doc/05-repositories.md#packages>
             unset($packageInfo['source']);
 
-            $infos = [
-                'dist' => [
-                    'reference' => $package->getDistReference(),
-                    'type' => 'path',
-                    'url' => sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $version),
-                ],
-            ] + $packageInfo;
-
-            ksort($infos);
-
             $packages[$package->getPrettyName()] = [
-                $version => $infos,
+                $version => [
+                    'dist' => [
+                        'reference' => $package->getDistReference(),
+                        'type' => 'path',
+                        'url' => sprintf('%s/%s/%s', $input->getArgument('repo-dir'), $package->getName(), $version),
+                    ],
+                ] + $packageInfo,
             ];
 
             $downloadManager
@@ -81,8 +77,6 @@ final class BuildLocalRepo extends BaseCommand
                     }
                 );
         }
-
-
 
         (new JsonFile(sprintf('%s/packages.json', $input->getArgument('repo-dir'))))->write(['packages' => $packages]);
 
