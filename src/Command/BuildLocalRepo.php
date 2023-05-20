@@ -32,10 +32,11 @@ final class BuildLocalRepo extends BaseCommand
         $composer = $this->requireComposer(true, true);
         $downloadManager = $composer->getDownloadManager();
         $fs = new Filesystem();
-        $repoDir = $input->getArgument('repo-dir');
 
-        if (false === realpath($repoDir)) {
-            throw new Exception('Repository path directory does not exist.');
+        if (false === $repoDir = realpath($input->getArgument('repo-dir'))) {
+            throw new Exception(
+                sprintf('Repository path "%s" directory does not exist.', $input->getArgument('repo-dir'))
+            );
         }
 
         $locker = $this->requireComposer(true, true)->getLocker();
