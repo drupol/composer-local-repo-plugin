@@ -1,9 +1,9 @@
 {
     "name": "drupol/composer-local-repo-plugin",
-    "description": "",
+    "description": "A plugin for Composer which provides a command to create local Composer repository for your projects.",
     "license": "MIT",
     "type": "composer-plugin",
-    "homepage": "https://todo.com",
+    "homepage": "https://github.com/drupol/composer-local-repo-plugin",
     "require": {
         "composer-plugin-api": "^2"
     },
