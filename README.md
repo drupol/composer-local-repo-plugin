@@ -35,6 +35,12 @@ Create a local composer repository, for an existing package:
 7. Update the lock file: `composer update --lock --no-install`
 8. Install the package: `composer install`
 
+### Note
+
+By default, Composer will create symbolic links to the packages, if you want to
+copy the packages instead, set the environment variable
+`COMPOSER_MIRROR_PATH_REPOS` to 1
+
 [composer website]: https://getcomposer.org/
 [fossar/composition-c4]: https://github.com/fossar/composition-c4/
 [Jan Tojnar]: https://github.com/jtojnar
