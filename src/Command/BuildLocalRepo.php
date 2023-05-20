@@ -64,13 +64,13 @@ final class BuildLocalRepo extends BaseCommand
             //     "PathDownloader" is a dist type downloader and can not be used to download source
             //
             // [1]: https://getcomposer.org/doc/05-repositories.md#packages>
-            $packages[$name][$version] = [
-                'dist' => [
-                    'reference' => $reference,
-                    'type' => 'path',
-                    'url' => $packagePath,
-                ],
-            ] + $packageInfo;
+            $packageInfo['dist'] = [
+                'reference' => $reference,
+                'type' => 'path',
+                'url' => $packagePath,
+            ];
+
+            $packages[$name][$version] = $packageInfo;
 
             $downloadManager
                 ->download(
@@ -105,11 +105,19 @@ final class BuildLocalRepo extends BaseCommand
         $data = $locker->getLockData();
         $loader = new ArrayLoader(null, true);
 
-        foreach ($data['packages'] ?? [] as $info) {
+        $packages = $data['packages'] ?? [];
+        ksort($packages);
+
+        foreach ($packages as $info) {
+            ksort($info);
             yield [$info, $loader->load($info)];
         }
 
-        foreach ($data['packages-dev'] ?? [] as $info) {
+        $devPackages = $data['packages-dev'] ?? [];
+        ksort($devPackages);
+
+        foreach ($devPackages as $info) {
+            ksort($info);
             yield [$info, $loader->load($info)];
         }
     }
