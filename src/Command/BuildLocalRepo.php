@@ -144,7 +144,6 @@ final class BuildLocalRepo extends BaseCommand
         $loader = new ArrayLoader(null, true);
 
         foreach ($this->iterLockedPackages($locker) as $packageInfo) {
-            unset($packageInfo['source']);
             $version = $packageInfo['version'];
             $name = $packageInfo['name'];
             $packagePath = sprintf('%s/%s/%s', $repoDir, $name, $version);
