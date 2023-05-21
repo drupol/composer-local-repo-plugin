@@ -45,7 +45,7 @@ final class BuildLocalRepo extends BaseCommand
             throw new Exception('Composer lock file does not exist.');
         }
 
-        if (true === $input->getOption('print-manifest')) {
+        if (true === $input->getOption('only-print-manifest')) {
             try {
                 $packages = $this->buildManifest($locker, $repoDir);
                 $output->writeln(json_encode(['packages' => $packages], JSON_PRETTY_PRINT));
