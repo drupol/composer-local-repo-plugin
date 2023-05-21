@@ -6,7 +6,6 @@ namespace loophp\ComposerLocalRepoPlugin\Command;
 
 use Composer\Command\BaseCommand;
 use Composer\Json\JsonFile;
-use Composer\Package\CompletePackage;
 use Composer\Package\Loader\ArrayLoader;
 use Composer\Package\Locker;
 use Composer\Util\Filesystem;
@@ -16,6 +15,8 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputOption;
+use Throwable;
 
 final class BuildLocalRepo extends BaseCommand
 {
@@ -23,20 +24,25 @@ final class BuildLocalRepo extends BaseCommand
     {
         $this
             ->setName('build-local-repo')
-            ->setDescription('Create local repositories with type "composer" for offline use.')
-            ->addArgument('repo-dir', InputArgument::REQUIRED, 'Target directory to create repo in');
+            ->setDescription(<<<EOF
+                Create local repositories with type "composer" for offline use.
+                  This command will create a repository in a given existing directory.
+                  By default, the repository and its manifest file "packages.json" will be created in the same target directory.
+                EOF
+            )
+            ->addArgument('repo-dir', InputArgument::REQUIRED, 'Target directory to create repository in, it must exist already.')
+            ->addOption('only-repo', 'r', InputOption::VALUE_NONE, 'Generate only the repository, without the manifest file "packages.json".')
+            ->addOption('only-manifest', 'm', InputOption::VALUE_NONE, 'Generate only the manifest "packages.json", without the repository.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $composer = $this->requireComposer(true, true);
-        $downloadManager = $composer->getDownloadManager();
-        $fs = new Filesystem();
-
         if (false === $repoDir = realpath($input->getArgument('repo-dir'))) {
-            throw new Exception(
-                sprintf('Repository path "%s" directory does not exist.', $input->getArgument('repo-dir'))
+            $output->writeln(
+                sprintf('Target repository directory "%s" does not exist.', $input->getArgument('repo-dir'))
             );
+
+            return Command::FAILURE;
         }
 
         $locker = $this->requireComposer(true, true)->getLocker();
@@ -45,14 +51,50 @@ final class BuildLocalRepo extends BaseCommand
             throw new Exception('Composer lock file does not exist.');
         }
 
+        if (false === $input->getOption('only-manifest')) {
+            try {
+                $this->buildRepo($locker, $repoDir);
+            } catch (Throwable $exception) {
+                $output->writeln(
+                    sprintf('Could not build repository: %s', $exception->getMessage())
+                );
+
+                return Command::FAILURE;
+            }
+
+            $output->writeln(
+                sprintf('Local repository has been successfully created in %s', $repoDir)
+            );
+        }
+
+        if (false === $input->getOption('only-repo')) {
+            try {
+                $this->buildManifest($locker, $repoDir);
+            } catch (Throwable $exception) {
+                $output->writeln(
+                    sprintf('Could not build manifest file: %s', $exception->getMessage())
+                );
+
+                return Command::FAILURE;
+            }
+
+            $output->writeln(
+                sprintf('Local repository manifest "packages.json" has been successfully created in %s', $repoDir)
+            );
+        }
+
+        return Command::SUCCESS;
+    }
+
+    private function buildManifest(Locker $locker, string $repoDir): void
+    {
         $packages = [];
-        foreach ($this->iterLockedPackages($locker) as [$packageInfo, $package]) {
+        foreach ($this->iterLockedPackages($locker) as $packageInfo) {
             unset($packageInfo['source']);
             $version = $packageInfo['version'];
             $reference = $packageInfo['dist']['reference'];
             $name = $packageInfo['name'];
             $packagePath = sprintf('%s/%s/%s', $repoDir, $name, $version);
-            $downloadManager = $downloadManager->setPreferSource(true);
 
             // While Composer repositories only really require `name`, `version` and `source`/`dist` fields,
             // we will use the original contents of the package’s entry from `composer.lock`, modifying just the sources.
@@ -71,6 +113,24 @@ final class BuildLocalRepo extends BaseCommand
             ];
 
             $packages[$name][$version] = $packageInfo;
+        }
+
+        (new JsonFile(sprintf('%s/packages.json', $repoDir)))->write(['packages' => $packages]);
+    }
+
+    private function buildRepo(Locker $locker, string $repoDir): void
+    {
+        $composer = $this->requireComposer(true, true);
+        $downloadManager = $composer->getDownloadManager()->setPreferSource(true);
+        $fs = new Filesystem();
+        $loader = new ArrayLoader(null, true);
+
+        foreach ($this->iterLockedPackages($locker) as $packageInfo) {
+            unset($packageInfo['source']);
+            $version = $packageInfo['version'];
+            $name = $packageInfo['name'];
+            $packagePath = sprintf('%s/%s/%s', $repoDir, $name, $version);
+            $package = $loader->load($packageInfo);
 
             $downloadManager
                 ->download(
@@ -87,38 +147,29 @@ final class BuildLocalRepo extends BaseCommand
                     static fn (): bool => $fs->removeDirectory(sprintf('%s/.git', $packagePath))
                 );
         }
-
-        (new JsonFile(sprintf('%s/packages.json', $repoDir)))->write(['packages' => $packages]);
-
-        $output->writeln(
-            sprintf('Local composer repository has been successfully created in %s', $repoDir)
-        );
-
-        return Command::SUCCESS;
     }
 
     /**
-     * @return Generator<int, CompletePackage>
+     * @return Generator<int, array<string, mixed>>
      */
     private function iterLockedPackages(Locker $locker): Generator
     {
         $data = $locker->getLockData();
-        $loader = new ArrayLoader(null, true);
 
         $packages = $data['packages'] ?? [];
         ksort($packages);
 
-        foreach ($packages as $info) {
-            ksort($info);
-            yield [$info, $loader->load($info)];
+        foreach ($packages as $packageInfo) {
+            ksort($packageInfo);
+            yield $packageInfo;
         }
 
         $devPackages = $data['packages-dev'] ?? [];
         ksort($devPackages);
 
-        foreach ($devPackages as $info) {
-            ksort($info);
-            yield [$info, $loader->load($info)];
+        foreach ($devPackages as $packageInfo) {
+            ksort($packageInfo);
+            yield $packageInfo;
         }
     }
 }
