@@ -32,23 +32,40 @@ final class BuildLocalRepo extends BaseCommand
             )
             ->addArgument('repo-dir', InputArgument::REQUIRED, 'Target directory to create repository in, it must exist already.')
             ->addOption('only-repo', 'r', InputOption::VALUE_NONE, 'Generate only the repository, without the manifest file "packages.json".')
-            ->addOption('only-manifest', 'm', InputOption::VALUE_NONE, 'Generate only the manifest "packages.json", without the repository.');
+            ->addOption('only-manifest', 'm', InputOption::VALUE_NONE, 'Generate only the manifest "packages.json", without the repository.')
+            ->addOption('only-print-manifest', 'p', InputOption::VALUE_NONE, 'Print the manifest for a given arbitrary repository directory.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        if (false === $repoDir = realpath($input->getArgument('repo-dir'))) {
+        $repoDir = $input->getArgument('repo-dir');
+        $locker = $this->requireComposer(true, true)->getLocker();
+
+        if (false === $locker->isLocked()) {
+            throw new Exception('Composer lock file does not exist.');
+        }
+
+        if (true === $input->getOption('print-manifest')) {
+            try {
+                $packages = $this->buildManifest($locker, $repoDir);
+                $output->writeln(json_encode(['packages' => $packages], JSON_PRETTY_PRINT));
+            } catch (Throwable $exception) {
+                $output->writeln(
+                    sprintf('Could not print manifest file: %s', $exception->getMessage())
+                );
+
+                return Command::FAILURE;
+            }
+
+            return Command::SUCCESS;
+        }
+
+        if (false === $repoDir = realpath($repoDir)) {
             $output->writeln(
                 sprintf('Target repository directory "%s" does not exist.', $input->getArgument('repo-dir'))
             );
 
             return Command::FAILURE;
-        }
-
-        $locker = $this->requireComposer(true, true)->getLocker();
-
-        if (false === $locker->isLocked()) {
-            throw new Exception('Composer lock file does not exist.');
         }
 
         if (false === $input->getOption('only-manifest')) {
@@ -69,7 +86,8 @@ final class BuildLocalRepo extends BaseCommand
 
         if (false === $input->getOption('only-repo')) {
             try {
-                $this->buildManifest($locker, $repoDir);
+                $packages = $this->buildManifest($locker, $repoDir);
+                (new JsonFile(sprintf('%s/packages.json', $repoDir)))->write(['packages' => $packages]);
             } catch (Throwable $exception) {
                 $output->writeln(
                     sprintf('Could not build manifest file: %s', $exception->getMessage())
@@ -86,7 +104,7 @@ final class BuildLocalRepo extends BaseCommand
         return Command::SUCCESS;
     }
 
-    private function buildManifest(Locker $locker, string $repoDir): void
+    private function buildManifest(Locker $locker, string $repoDir): array
     {
         $packages = [];
         foreach ($this->iterLockedPackages($locker) as $packageInfo) {
@@ -115,7 +133,7 @@ final class BuildLocalRepo extends BaseCommand
             $packages[$name][$version] = $packageInfo;
         }
 
-        (new JsonFile(sprintf('%s/packages.json', $repoDir)))->write(['packages' => $packages]);
+        return $packages;
     }
 
     private function buildRepo(Locker $locker, string $repoDir): void
