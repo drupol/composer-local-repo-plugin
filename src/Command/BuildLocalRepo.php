@@ -124,11 +124,13 @@ final class BuildLocalRepo extends BaseCommand
             //     "PathDownloader" is a dist type downloader and can not be used to download source
             //
             // [1]: https://getcomposer.org/doc/05-repositories.md#packages>
-            $packageInfo['dist'] = [
-                'reference' => $reference,
-                'type' => 'path',
-                'url' => $packagePath,
-            ];
+            if ($packageInfo['dist']['type'] !== 'path') {
+                $packageInfo['dist'] = [
+                    'reference' => $reference,
+                    'type' => 'path',
+                    'url' => $packagePath,
+                ];
+            }
 
             $packages[$name][$version] = $packageInfo;
         }
