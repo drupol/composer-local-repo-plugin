@@ -38,20 +38,22 @@ Create a local composer repository, for an existing package:
 1. Move into the package directory (_an option will be provided in the future to
    skip this step_)
 2. Make sure the `composer.json` and `composer.lock` files are present.
-3. Build the local repository:
+3. Run `composer install` to install the package and its dependencies.
+4. Build the local repository:
    `composer build-local-repo /path/to/local/repository` This command will
    create a local `composer` repository in the `/path/to/local/repository`
    directory and also a manifest file `packages.json` in the same directory. You
    can use the `-r` or `-m` to create a repository or manifest file only. See
    the command help (`composer build-local-repo --help`) for more information.
-4. Disable download from `packagist.org` repository:
+5. Disable download from `packagist.org` repository:
    `composer config repo.packagist false`
-5. Add the new local `composer` repository to the `composer.json` file:
+6. Add the new local `composer` repository to the `composer.json` file:
    `composer config repo.local '{"type": "composer", "url": "file:///path/to/local/reposity/packages.json"}'`
-6. At this point you can disable network, no network access is needed any more
-7. Update the lock file:
+7. At this point you can delete the `vendor` directory and disable the network,
+   no network access is needed any more
+8. Update the lock file:
    `composer update --lock --no-install --no-scripts --no-plugins --no-interaction`
-8. Install the package: `composer install`
+9. Install the package: `composer install`
 
 ### Note
 
