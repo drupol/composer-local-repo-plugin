@@ -38,12 +38,15 @@ final class BuildLocalRepo extends BaseCommand
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $repoDir = $input->getArgument('repo-dir');
+        $composer = $this->requireComposer(true, true);
         $locker = $this->requireComposer(true, true)->getLocker();
+        $fs = new Filesystem();
 
         if (false === $locker->isLocked()) {
             throw new Exception('Composer lock file does not exist.');
         }
+
+        $repoDir = $input->getArgument('repo-dir');
 
         if (true === $input->getOption('only-print-manifest')) {
             try {
@@ -60,15 +63,33 @@ final class BuildLocalRepo extends BaseCommand
             return Command::SUCCESS;
         }
 
-        if (false === $repoDir = realpath($repoDir)) {
-            $output->writeln(
-                sprintf('Target repository directory "%s" does not exist.', $input->getArgument('repo-dir'))
-            );
-
-            return Command::FAILURE;
-        }
-
         if (false === $input->getOption('only-manifest')) {
+            if (false === $repoDir = realpath($repoDir)) {
+                $output->writeln(
+                    sprintf('Target repository directory "%s" does not exist.', $input->getArgument('repo-dir'))
+                );
+
+                return Command::FAILURE;
+            }
+
+            if (false === $fs->isDirEmpty($repoDir)) {
+                $output->writeln(
+                    sprintf('Target repository directory "%s" is not empty.', $input->getArgument('repo-dir'))
+                );
+
+                return Command::FAILURE;
+            }
+
+            $vendorDir = $composer->getConfig()->get('vendor-dir');
+
+            if (false === (file_exists($vendorDir) && is_dir($vendorDir))) {
+                $output->writeln(
+                    sprintf('The vendor directory "%s" does not exist, please run `composer install` before running this command.', $vendorDir)
+                );
+
+                return Command::FAILURE;
+            }
+
             try {
                 $this->buildRepo($locker, $repoDir);
             } catch (Throwable $exception) {
@@ -141,7 +162,6 @@ final class BuildLocalRepo extends BaseCommand
     private function buildRepo(Locker $locker, string $repoDir): void
     {
         $composer = $this->requireComposer(true, true);
-        $downloadManager = $composer->getDownloadManager()->setPreferSource(true);
         $fs = new Filesystem();
         $loader = new ArrayLoader(null, true);
 
@@ -151,20 +171,12 @@ final class BuildLocalRepo extends BaseCommand
             $packagePath = sprintf('%s/%s/%s', $repoDir, $name, $version);
             $package = $loader->load($packageInfo);
 
-            $downloadManager
-                ->download(
-                    $package,
-                    $packagePath,
-                );
+            $fs->ensureDirectoryExists($packagePath);
 
-            $downloadManager
-                ->install(
-                    $package,
-                    $packagePath,
-                )
-                ->then(
-                    static fn (): bool => $fs->removeDirectory(sprintf('%s/.git', $packagePath))
-                );
+            $fs->copy(
+                $composer->getInstallationManager()->getInstallPath($package),
+                $packagePath
+            );
         }
     }
 
