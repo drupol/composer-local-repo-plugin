@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace loophp\ComposerLocalRepoPlugin\Command;
 
 use Composer\Command\BaseCommand;
+use Composer\Composer;
 use Composer\Json\JsonFile;
 use Composer\Package\Loader\ArrayLoader;
 use Composer\Package\Locker;
+use Composer\PartialComposer;
 use Composer\Util\Filesystem;
 use Exception;
 use Generator;
+use React\Promise\PromiseInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -31,6 +34,7 @@ final class BuildLocalRepo extends BaseCommand
                 EOF
             )
             ->addArgument('repo-dir', InputArgument::REQUIRED, 'Target directory to create repository in, it must exist already.')
+            ->addOption('no-dev', null, InputOption::VALUE_NONE, 'Skip development dependencies.')
             ->addOption('only-repo', 'r', InputOption::VALUE_NONE, 'Generate only the repository, without the manifest file "packages.json".')
             ->addOption('only-manifest', 'm', InputOption::VALUE_NONE, 'Generate only the manifest "packages.json", without the repository.')
             ->addOption('only-print-manifest', 'p', InputOption::VALUE_NONE, 'Print the manifest for a given arbitrary repository directory.');
@@ -50,7 +54,7 @@ final class BuildLocalRepo extends BaseCommand
 
         if (true === $input->getOption('only-print-manifest')) {
             try {
-                $packages = $this->buildManifest($locker, $repoDir);
+                $packages = $this->buildManifest($input, $locker, $repoDir);
                 $output->writeln(json_encode(['packages' => $packages], JSON_PRETTY_PRINT));
             } catch (Throwable $exception) {
                 $output->writeln(
@@ -80,18 +84,8 @@ final class BuildLocalRepo extends BaseCommand
                 return Command::FAILURE;
             }
 
-            $vendorDir = $composer->getConfig()->get('vendor-dir');
-
-            if (false === (file_exists($vendorDir) && is_dir($vendorDir))) {
-                $output->writeln(
-                    sprintf('The vendor directory "%s" does not exist, please run `composer install` before running this command.', $vendorDir)
-                );
-
-                return Command::FAILURE;
-            }
-
             try {
-                $this->buildRepo($locker, $repoDir);
+                $this->buildRepo($composer, $input, $locker, $repoDir);
             } catch (Throwable $exception) {
                 $output->writeln(
                     sprintf('Could not build repository: %s', $exception->getMessage())
@@ -107,7 +101,7 @@ final class BuildLocalRepo extends BaseCommand
 
         if (false === $input->getOption('only-repo')) {
             try {
-                $packages = $this->buildManifest($locker, $repoDir);
+                $packages = $this->buildManifest($input, $locker, $repoDir);
                 (new JsonFile(sprintf('%s/packages.json', $repoDir)))->write(['packages' => $packages]);
             } catch (Throwable $exception) {
                 $output->writeln(
@@ -125,10 +119,10 @@ final class BuildLocalRepo extends BaseCommand
         return Command::SUCCESS;
     }
 
-    private function buildManifest(Locker $locker, string $repoDir): array
+    private function buildManifest(InputInterface $input, Locker $locker, string $repoDir): array
     {
         $packages = [];
-        foreach ($this->iterLockedPackages($locker) as $packageInfo) {
+        foreach ($this->iterLockedPackages($input, $locker) as $packageInfo) {
             unset($packageInfo['source']);
             $version = $packageInfo['version'];
             $reference = $packageInfo['dist']['reference'];
@@ -159,31 +153,39 @@ final class BuildLocalRepo extends BaseCommand
         return $packages;
     }
 
-    private function buildRepo(Locker $locker, string $repoDir): void
+    private function buildRepo(Composer $composer, InputInterface $input, Locker $locker, string $repoDir): void
     {
-        $composer = $this->requireComposer(true, true);
-        $fs = new Filesystem();
+        $downloadManager = $composer->getDownloadManager();
         $loader = new ArrayLoader(null, true);
 
-        foreach ($this->iterLockedPackages($locker) as $packageInfo) {
-            $version = $packageInfo['version'];
-            $name = $packageInfo['name'];
-            $packagePath = sprintf('%s/%s/%s', $repoDir, $name, $version);
+        $downloadAndInstall = [];
+        foreach ($this->iterLockedPackages($input, $locker) as $packageInfo) {
+            $packagePath = sprintf('%s/%s/%s', $repoDir, $packageInfo['name'], $packageInfo['version']);
             $package = $loader->load($packageInfo);
 
-            $fs->ensureDirectoryExists($packagePath);
-
-            $fs->copy(
-                $composer->getInstallationManager()->getInstallPath($package),
-                $packagePath
+            $downloadAndInstall[] = $downloadManager->download(
+                $package,
+                $packagePath,
+            )->then(
+                static fn(): PromiseInterface => $downloadManager->install(
+                    $package,
+                    $packagePath,
+                )->then(
+                    static fn(): PromiseInterface => $downloadManager->cleanup(
+                        'install',
+                        $package,
+                        $packagePath)
+                )
             );
         }
+
+        $composer->getLoop()->wait($downloadAndInstall);
     }
 
     /**
      * @return Generator<int, array<string, mixed>>
      */
-    private function iterLockedPackages(Locker $locker): Generator
+    private function iterLockedPackages(InputInterface $input, Locker $locker): Generator
     {
         $data = $locker->getLockData();
 
@@ -198,9 +200,11 @@ final class BuildLocalRepo extends BaseCommand
         $devPackages = $data['packages-dev'] ?? [];
         ksort($devPackages);
 
-        foreach ($devPackages as $packageInfo) {
-            ksort($packageInfo);
-            yield $packageInfo;
+        if (false === $input->getOption('no-dev')) {
+            foreach ($devPackages as $packageInfo) {
+                ksort($packageInfo);
+                yield $packageInfo;
+            }
         }
     }
 }
