@@ -17,11 +17,13 @@ use Exception;
 use Generator;
 use React\Promise\PromiseInterface;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
+
+use const JSON_PRETTY_PRINT;
 
 final class BuildLocalRepo extends BaseCommand
 {
@@ -29,11 +31,12 @@ final class BuildLocalRepo extends BaseCommand
     {
         $this
             ->setName('build-local-repo')
-            ->setDescription(<<<EOF
-                Create local repositories with type "composer" for offline use.
-                  This command will create a repository in a given existing directory.
-                  By default, the repository and its manifest file "packages.json" will be created in the same target directory.
-                EOF
+            ->setDescription(
+                <<<'EOF'
+                    Create local repositories with type "composer" for offline use.
+                      This command will create a repository in a given existing directory.
+                      By default, the repository and its manifest file "packages.json" will be created in the same target directory.
+                    EOF
             )
             ->addArgument('repo-dir', InputArgument::REQUIRED, 'Target directory to create repository in, it must exist already.')
             ->addOption('no-dev', null, InputOption::VALUE_NONE, 'Skip development dependencies.')
@@ -129,6 +132,13 @@ final class BuildLocalRepo extends BaseCommand
         return Command::SUCCESS;
     }
 
+    private function await(Loop $loop, ?PromiseInterface $promise = null): void
+    {
+        if ($promise) {
+            $loop->wait([$promise]);
+        }
+    }
+
     private function buildManifest(InputInterface $input, Locker $locker, string $repoDir): array
     {
         $packages = [];
@@ -151,7 +161,7 @@ final class BuildLocalRepo extends BaseCommand
             //     "PathDownloader" is a dist type downloader and can not be used to download source
             //
             // [1]: https://getcomposer.org/doc/05-repositories.md#packages>
-            $packageInfo[$sourceOrigin] = $source['type'] !== 'path'
+            $packageInfo[$sourceOrigin] = 'path' !== $source['type']
                 ? ['type' => 'path', 'url' => sprintf('%s/%s/%s', $repoDir, $name, $version)] + $source
                 : $source;
 
@@ -180,7 +190,7 @@ final class BuildLocalRepo extends BaseCommand
     }
 
     /**
-     * Shamelessly copied from https://github.com/composer/composer/blob/52f6f74b7c342f7b90be9c1a87e183092e8ab452/src/Composer/Util/SyncHelper.php
+     * Shamelessly copied from https://github.com/composer/composer/blob/52f6f74b7c342f7b90be9c1a87e183092e8ab452/src/Composer/Util/SyncHelper.php.
      *
      * Uses the `DownloaderManager` instead of a `Downloader` to download and install a package.
      */
@@ -193,24 +203,18 @@ final class BuildLocalRepo extends BaseCommand
 
             $this->await($loop, $downloadManager->prepare($type, $package, $path, $prevPackage));
 
-            if ($type === 'update') {
+            if ('update' === $type) {
                 $this->await($loop, $downloadManager->update($package, $prevPackage, $path));
             } else {
                 $this->await($loop, $downloadManager->install($package, $path));
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->await($loop, $downloadManager->cleanup($type, $package, $path, $prevPackage));
+
             throw $e;
         }
 
         $this->await($loop, $downloadManager->cleanup($type, $package, $path, $prevPackage));
-    }
-
-    private function await(Loop $loop, ?PromiseInterface $promise = null): void
-    {
-        if ($promise) {
-            $loop->wait([$promise]);
-        }
     }
 
     /**
@@ -225,6 +229,7 @@ final class BuildLocalRepo extends BaseCommand
 
         foreach ($packages as $packageInfo) {
             ksort($packageInfo);
+
             yield $packageInfo;
         }
 
@@ -234,6 +239,7 @@ final class BuildLocalRepo extends BaseCommand
         if (false === $input->getOption('no-dev')) {
             foreach ($devPackages as $packageInfo) {
                 ksort($packageInfo);
+
                 yield $packageInfo;
             }
         }
