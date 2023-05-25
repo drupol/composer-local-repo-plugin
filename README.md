@@ -1,20 +1,19 @@
 # Composer Local Repo Plugin
 
-This plugin for [Composer][composer website] allows to create a local repository
-of type "composer" ([see documentation][composer repository]) from an existing
-package.
+This plugin, built for [Composer][composer website], facilitates the creation of
+a local `composer` type repository
+([refer to documentation][composer repository]) from an existing package.
 
-A repository type `composer` is the type used by [Packagist][composer website].
-It has a very specific structure composer of a manifest file `packages.json` and
-directories containing for each version of the package, its corresponding
-source.
+The repository type `composer` is identical to the format used by
+[Packagist][composer website]. It uses a specific structure, featuring a
+manifest file named `packages.json` and a unique directory structure. Each
+version of the package within the repository has its own corresponding source.
 
-This plugin has been specifically created to allow the installation of a PHP
-package in a reproducible way, without network access once the repository has
-been created.
+Created with the goal of installing a PHP package in a repeatable manner, this
+plugin eliminates the need for network access post repository creation.
 
-It is currently used in Nix, see the [corresponding PR][php builder pr] where
-everything started.
+The plugin is currently used within Nix. More information can be found in the
+[corresponding PR][php builder pr], marking the project's inception.
 
 This project has been heavily inspired of
 [`fossar/composition-c4`][fossar/composition-c4] from [Jan Tojnar][Jan Tojnar].
