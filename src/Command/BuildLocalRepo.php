@@ -44,6 +44,7 @@ final class BuildLocalRepo extends BaseCommand
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $io = $this->getIO();
         $composer = $this->requireComposer(true, true);
         $locker = $this->requireComposer(true, true)->getLocker();
         $fs = new Filesystem();
@@ -56,12 +57,15 @@ final class BuildLocalRepo extends BaseCommand
 
         if (true === $input->getOption('only-print-manifest')) {
             try {
-                $packages = $this->buildManifest($input, $locker, $repoDir);
-                $output->writeln(json_encode(['packages' => $packages], JSON_PRETTY_PRINT));
+                $output->writeln(json_encode(
+                    ['packages' => $this->buildManifest($input, $locker, $repoDir)],
+                    JSON_PRETTY_PRINT
+                ));
             } catch (Throwable $exception) {
-                $output->writeln(
-                    sprintf('Could not print manifest file: %s', $exception->getMessage())
-                );
+                $io
+                    ->writeError(
+                        sprintf('<error>Could not print manifest file: %s</error>', $exception->getMessage())
+                    );
 
                 return Command::FAILURE;
             }
@@ -71,17 +75,19 @@ final class BuildLocalRepo extends BaseCommand
 
         if (false === $input->getOption('only-manifest')) {
             if (false === $repoDir = realpath($repoDir)) {
-                $output->writeln(
-                    sprintf('Target repository directory "%s" does not exist.', $input->getArgument('repo-dir'))
-                );
+                $io
+                    ->writeError(
+                        sprintf('<error>Target repository directory "%s" does not exist.</error>', $input->getArgument('repo-dir'))
+                    );
 
                 return Command::FAILURE;
             }
 
             if (false === $fs->isDirEmpty($repoDir)) {
-                $output->writeln(
-                    sprintf('Target repository directory "%s" is not empty.', $input->getArgument('repo-dir'))
-                );
+                $io
+                    ->writeError(
+                        sprintf('<error>Target repository directory "%s" is not empty.</error>', $input->getArgument('repo-dir'))
+                    );
 
                 return Command::FAILURE;
             }
@@ -89,32 +95,34 @@ final class BuildLocalRepo extends BaseCommand
             try {
                 $this->buildRepo($composer, $input, $locker, $repoDir);
             } catch (Throwable $exception) {
-                $output->writeln(
-                    sprintf('Could not build repository: %s', $exception->getMessage())
-                );
+                $io
+                    ->writeError(
+                        sprintf('<error>Could not build repository: %s</error>', $exception->getMessage())
+                    );
 
                 return Command::FAILURE;
             }
 
-            $output->writeln(
-                sprintf('Local repository has been successfully created in %s', $repoDir)
+            $io->write(
+                sprintf('<info>Local repository has been successfully created in %s</info>', $repoDir)
             );
         }
 
         if (false === $input->getOption('only-repo')) {
             try {
-                $packages = $this->buildManifest($input, $locker, $repoDir);
-                (new JsonFile(sprintf('%s/packages.json', $repoDir)))->write(['packages' => $packages]);
+                (new JsonFile(sprintf('%s/packages.json', $repoDir)))
+                    ->write(['packages' => $this->buildManifest($input, $locker, $repoDir)]);
             } catch (Throwable $exception) {
-                $output->writeln(
-                    sprintf('Could not build manifest file: %s', $exception->getMessage())
-                );
+                $io
+                    ->writeError(
+                        sprintf('<error>Could not build manifest file: %s</error>', $exception->getMessage())
+                    );
 
                 return Command::FAILURE;
             }
 
-            $output->writeln(
-                sprintf('Local repository manifest "packages.json" has been successfully created in %s', $repoDir)
+            $io->write(
+                sprintf('<info>Local repository manifest "packages.json" has been successfully created in %s</info>', $repoDir)
             );
         }
 
@@ -127,12 +135,11 @@ final class BuildLocalRepo extends BaseCommand
         $loader = new ArrayLoader(null, true);
 
         foreach ($this->iterLockedPackages($input, $locker) as $packageInfo) {
-            $source = $this->getSource($loader->load($packageInfo));
+            $sourceOrigin = null !== $loader->load($packageInfo)->getDistType() ? 'dist' : 'source';
 
-            $version = $packageInfo['version'];
-            $reference = $packageInfo[$source]['reference'];
             $name = $packageInfo['name'];
-            $packagePath = sprintf('%s/%s/%s', $repoDir, $name, $version);
+            $version = $packageInfo['version'];
+            $source = $packageInfo[$sourceOrigin];
 
             // While Composer repositories only really require `name`, `version` and `source`/`dist` fields,
             // we will use the original contents of the package’s entry from `composer.lock`, modifying just the sources.
@@ -144,17 +151,14 @@ final class BuildLocalRepo extends BaseCommand
             //     "PathDownloader" is a dist type downloader and can not be used to download source
             //
             // [1]: https://getcomposer.org/doc/05-repositories.md#packages>
-
-            if ($packageInfo[$source]['type'] !== 'path') {
-                $packageInfo[$source] = [
-                    'reference' => $reference,
-                    'type' => 'path',
-                    'url' => $packagePath,
-                ];
-            }
+            $packageInfo[$sourceOrigin] = $source['type'] !== 'path'
+                ? ['type' => 'path', 'url' => sprintf('%s/%s/%s', $repoDir, $name, $version)] + $source
+                : $source;
 
             $packages[$name][$version] = $packageInfo;
         }
+
+        ksort($packages);
 
         return $packages;
     }
@@ -173,17 +177,6 @@ final class BuildLocalRepo extends BaseCommand
                 $loader->load($packageInfo)
             );
         }
-    }
-
-    private function getSource(PackageInterface $package): string
-    {
-        $distType = $package->getDistType();
-
-        if (null !== $distType) {
-            return 'dist';
-        }
-
-        return 'source';
     }
 
     /**
