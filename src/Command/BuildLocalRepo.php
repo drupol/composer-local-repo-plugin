@@ -124,10 +124,13 @@ final class BuildLocalRepo extends BaseCommand
     private function buildManifest(InputInterface $input, Locker $locker, string $repoDir): array
     {
         $packages = [];
+        $loader = new ArrayLoader(null, true);
+
         foreach ($this->iterLockedPackages($input, $locker) as $packageInfo) {
-            unset($packageInfo['source']);
+            $source = $this->getSource($loader->load($packageInfo));
+
             $version = $packageInfo['version'];
-            $reference = $packageInfo['dist']['reference'];
+            $reference = $packageInfo[$source]['reference'];
             $name = $packageInfo['name'];
             $packagePath = sprintf('%s/%s/%s', $repoDir, $name, $version);
 
@@ -141,8 +144,9 @@ final class BuildLocalRepo extends BaseCommand
             //     "PathDownloader" is a dist type downloader and can not be used to download source
             //
             // [1]: https://getcomposer.org/doc/05-repositories.md#packages>
-            if ($packageInfo['dist']['type'] !== 'path') {
-                $packageInfo['dist'] = [
+
+            if ($packageInfo[$source]['type'] !== 'path') {
+                $packageInfo[$source] = [
                     'reference' => $reference,
                     'type' => 'path',
                     'url' => $packagePath,
@@ -169,6 +173,17 @@ final class BuildLocalRepo extends BaseCommand
                 $loader->load($packageInfo)
             );
         }
+    }
+
+    private function getSource(PackageInterface $package): string
+    {
+        $distType = $package->getDistType();
+
+        if (null !== $distType) {
+            return 'dist';
+        }
+
+        return 'source';
     }
 
     /**
