@@ -6,11 +6,15 @@ namespace loophp\ComposerLocalRepoPlugin\Command;
 
 use Composer\Command\BaseCommand;
 use Composer\Composer;
+use Composer\Downloader\DownloadManager;
 use Composer\Json\JsonFile;
 use Composer\Package\Loader\ArrayLoader;
 use Composer\Package\Locker;
+use Composer\Package\PackageInterface;
 use Composer\PartialComposer;
 use Composer\Util\Filesystem;
+use Composer\Util\Loop;
+use Composer\Util\SyncHelper;
 use Exception;
 use Generator;
 use React\Promise\PromiseInterface;
@@ -155,31 +159,52 @@ final class BuildLocalRepo extends BaseCommand
 
     private function buildRepo(Composer $composer, InputInterface $input, Locker $locker, string $repoDir): void
     {
-        $downloadManager = $composer->getDownloadManager();
+        $loop = $composer->getLoop();
         $loader = new ArrayLoader(null, true);
+        $downloadManager = $composer->getDownloadManager();
 
-        $downloadAndInstall = [];
         foreach ($this->iterLockedPackages($input, $locker) as $packageInfo) {
-            $packagePath = sprintf('%s/%s/%s', $repoDir, $packageInfo['name'], $packageInfo['version']);
-            $package = $loader->load($packageInfo);
-
-            $downloadAndInstall[] = $downloadManager->download(
-                $package,
-                $packagePath,
-            )->then(
-                static fn(): PromiseInterface => $downloadManager->install(
-                    $package,
-                    $packagePath,
-                )->then(
-                    static fn(): PromiseInterface => $downloadManager->cleanup(
-                        'install',
-                        $package,
-                        $packagePath)
-                )
+            $this->downloadAndInstallPackageSync(
+                $loop,
+                $downloadManager,
+                sprintf('%s/%s/%s', $repoDir, $packageInfo['name'], $packageInfo['version']),
+                $loader->load($packageInfo)
             );
         }
+    }
 
-        $composer->getLoop()->wait($downloadAndInstall);
+    /**
+     * Shamelessly copied from https://github.com/composer/composer/blob/52f6f74b7c342f7b90be9c1a87e183092e8ab452/src/Composer/Util/SyncHelper.php
+     *
+     * Uses the `DownloaderManager` instead of a `Downloader` to download and install a package.
+     */
+    private function downloadAndInstallPackageSync(Loop $loop, DownloadManager $downloadManager, string $path, PackageInterface $package, ?PackageInterface $prevPackage = null): void
+    {
+        $type = $prevPackage ? 'update' : 'install';
+
+        try {
+            $this->await($loop, $downloadManager->download($package, $path, $prevPackage));
+
+            $this->await($loop, $downloadManager->prepare($type, $package, $path, $prevPackage));
+
+            if ($type === 'update') {
+                $this->await($loop, $downloadManager->update($package, $prevPackage, $path));
+            } else {
+                $this->await($loop, $downloadManager->install($package, $path));
+            }
+        } catch (\Exception $e) {
+            $this->await($loop, $downloadManager->cleanup($type, $package, $path, $prevPackage));
+            throw $e;
+        }
+
+        $this->await($loop, $downloadManager->cleanup($type, $package, $path, $prevPackage));
+    }
+
+    private function await(Loop $loop, ?PromiseInterface $promise = null): void
+    {
+        if ($promise) {
+            $loop->wait([$promise]);
+        }
     }
 
     /**
