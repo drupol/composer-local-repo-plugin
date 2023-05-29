@@ -60,7 +60,7 @@ final class BuildLocalRepo extends BaseCommand
 
         if (true === $input->getOption('only-print-manifest')) {
             try {
-                $output->writeln(json_encode(
+                $output->writeln((string) json_encode(
                     ['packages' => $this->buildManifest($input, $locker, $repoDir)],
                     JSON_PRETTY_PRINT
                 ));
@@ -139,6 +139,9 @@ final class BuildLocalRepo extends BaseCommand
         }
     }
 
+    /**
+     * @return array<string, array<string, array<string, mixed>>>
+     */
     private function buildManifest(InputInterface $input, Locker $locker, string $repoDir): array
     {
         $packages = [];
@@ -147,7 +150,9 @@ final class BuildLocalRepo extends BaseCommand
         foreach ($this->iterLockedPackages($input, $locker) as $packageInfo) {
             $sourceOrigin = null !== $loader->load($packageInfo)->getDistType() ? 'dist' : 'source';
 
+            /** @var string $name */
             $name = $packageInfo['name'];
+            /** @var string $version */
             $version = $packageInfo['version'];
             $source = $packageInfo[$sourceOrigin];
 
@@ -203,7 +208,7 @@ final class BuildLocalRepo extends BaseCommand
 
             $this->await($loop, $downloadManager->prepare($type, $package, $path, $prevPackage));
 
-            if ('update' === $type) {
+            if ('update' === $type && null !== $prevPackage) {
                 $this->await($loop, $downloadManager->update($package, $prevPackage, $path));
             } else {
                 $this->await($loop, $downloadManager->install($package, $path));
