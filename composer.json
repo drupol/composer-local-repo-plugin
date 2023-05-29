@@ -5,13 +5,13 @@
     "type": "composer-plugin",
     "homepage": "https://github.com/drupol/composer-local-repo-plugin",
     "require": {
-        "php": "^8.0",
+        "php": "^8.1",
         "composer-plugin-api": "^2"
     },
     "require-dev": {
         "composer/composer": "^2.5",
         "drupol/php-conventions": "^5.1",
-        "phpunit/phpunit": "^9.6 || ^10.1"
+        "phpunit/phpunit": "^10.1"
     },
     "autoload": {
         "psr-4": {
