@@ -39,15 +39,9 @@ jobs:
               uses: shivammathur/setup-php@v2
               with:
                   php-version: ${{ matrix.php-versions }}
-                  tools: cs2pr
 
             - name: Install dependencies
               uses: ramsey/composer-install@v2
 
             - name: Run Grumphp
               run: vendor/bin/grumphp run --testsuite=cs -n
-
-            - name: Send feedback on Github
-              if: ${{ failure() }}
-              run: |
-                  vendor/bin/php-cs-fixer --allow-risky=yes --config=.php-cs-fixer.dist.php fix --dry-run --format=checkstyle | cs2pr
