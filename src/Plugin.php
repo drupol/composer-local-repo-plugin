@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace loophp\ComposerLocalRepoPlugin;
 
 use Composer\Composer;
-use Composer\EventDispatcher\EventSubscriberInterface;
 use Composer\IO\IOInterface;
 use Composer\Plugin\Capability\CommandProvider;
 use Composer\Plugin\Capable;
 use Composer\Plugin\PluginInterface;
 use loophp\ComposerLocalRepoPlugin\Command\BuildLocalRepo;
 
-final class Plugin implements PluginInterface, Capable, EventSubscriberInterface, CommandProvider
+final class Plugin implements PluginInterface, Capable, CommandProvider
 {
     public function activate(Composer $composer, IOInterface $io): void
     {
@@ -34,11 +33,6 @@ final class Plugin implements PluginInterface, Capable, EventSubscriberInterface
         return [
             new BuildLocalRepo(),
         ];
-    }
-
-    public static function getSubscribedEvents(): array
-    {
-        return [];
     }
 
     public function uninstall(Composer $composer, IOInterface $io)
