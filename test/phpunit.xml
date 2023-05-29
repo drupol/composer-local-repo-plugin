@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.1/phpunit.xsd" beStrictAboutChangesToGlobalState="true" beStrictAboutOutputDuringTests="true" beStrictAboutTestsThatDoNotTestAnything="true" bootstrap="../vendor/autoload.php" cacheResult="true" colors="true" columns="max" executionOrder="random" stopOnError="false" stopOnFailure="false" stopOnIncomplete="false" stopOnSkipped="false">
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.1/phpunit.xsd" beStrictAboutChangesToGlobalState="true" beStrictAboutOutputDuringTests="true" beStrictAboutTestsThatDoNotTestAnything="true" bootstrap="../vendor/autoload.php" cacheResult="true" colors="true" columns="max" executionOrder="random" stopOnError="false" stopOnFailure="false" stopOnIncomplete="false" stopOnSkipped="false" cacheDirectory=".phpunit.cache" beStrictAboutCoverageMetadata="true">
   <coverage includeUncoveredFiles="true"/>
   <php>
     <env name="COLUMNS" value="200"/>
@@ -11,4 +11,9 @@
       <directory>Integration/</directory>
     </testsuite>
   </testsuites>
+  <source>
+    <include>
+      <directory suffix=".php">../src/</directory>
+    </include>
+  </source>
 </phpunit>
