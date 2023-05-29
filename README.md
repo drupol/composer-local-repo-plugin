@@ -1,8 +1,8 @@
 # Composer Local Repo Plugin
 
 This plugin, built for [Composer][composer website], facilitates the creation of
-a local `composer` type repository
-([refer to documentation][composer repository]) from an existing package.
+a local `composer` type repository ([refer to
+documentation][composer repository]) from an existing package.
 
 The repository type `composer` is identical to the format used by
 [Packagist][composer website]. It uses a specific structure, featuring a
