@@ -4,3 +4,4 @@
 /build
 /test/.phpunit.cache/
 /.php_cs.cache
+/composer.lock
