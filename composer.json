@@ -5,7 +5,7 @@
     "type": "composer-plugin",
     "homepage": "https://github.com/drupol/composer-local-repo-plugin",
     "require": {
-        "php": "^8.0 || ^8.1",
+        "php": "^8.0",
         "composer-plugin-api": "^2"
     },
     "require-dev": {
