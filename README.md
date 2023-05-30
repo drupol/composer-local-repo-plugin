@@ -34,24 +34,24 @@ composer global require loophp/composer-local-repo-plugin
 
 Create a local composer repository, for an existing package:
 
-1. Move into the package directory (_an option will be provided in the future to
-   skip this step_)
+1. Navigate to the package directory, or use the `--working-dir` option.
 2. Make sure the `composer.json` and `composer.lock` files are present.
-3. Build the local repository:
-   `composer build-local-repo /path/to/local/repository` This command will
-   create a local `composer` repository in the `/path/to/local/repository`
-   directory and also a manifest file `packages.json` in the same directory. You
-   can use the `-r` or `-m` to create a repository or manifest file only. See
-   the command help (`composer build-local-repo --help`) for more information.
-4. Disable download from `packagist.org` repository:
-   `composer config repo.packagist false`
-5. Add the new local `composer` repository to the `composer.json` file:
-   `composer config repo.local '{"type": "composer", "url": "file:///path/to/local/reposity/packages.json"}'`
-6. At this point you can delete the `vendor` directory and disable the network,
-   no network access is needed any more
-7. Update the lock file:
-   `composer update --lock --no-install --no-scripts --no-plugins --no-interaction`
-8. Install the package: `composer install`
+3. Generate the local repository using the command:
+   `composer build-local-repo /path/to/local/repository`. This will create a
+   local `composer` repository in the specified directory and generate a
+   manifest file `packages.json` in the same location. Use the `-r` or `-m`
+   options to generate only a repository or a manifest file, respectively. For
+   more details, refer to the command help: `composer build-local-repo --help`.
+4. Disable downloading from the `packagist.org` repository by entering the
+   command: `composer config repo.packagist false`.
+5. Integrate the newly created local `composer` repository into the
+   `composer.json` file using the command:
+   `composer config repo.local composer file:///path/to/local/reposity/packages.json`.
+6. At this stage, you can disable the network as no further network access is
+   required.
+7. Refresh the lock file using the command:
+   `composer update --lock --no-install --no-scripts --no-plugins --no-interaction`.
+8. Finally, install the package by entering the command: `composer install`.
 
 ### Note
 
