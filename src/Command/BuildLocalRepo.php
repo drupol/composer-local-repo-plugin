@@ -49,7 +49,7 @@ final class BuildLocalRepo extends BaseCommand
     {
         $io = $this->getIO();
         $composer = $this->requireComposer(true, true);
-        $locker = $this->requireComposer(true, true)->getLocker();
+        $locker = $composer->getLocker();
         $fs = new Filesystem();
 
         if (false === $locker->isLocked()) {
