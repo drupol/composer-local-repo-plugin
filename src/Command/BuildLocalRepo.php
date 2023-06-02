@@ -6,7 +6,6 @@ namespace loophp\ComposerLocalRepoPlugin\Command;
 
 use Composer\Command\BaseCommand;
 use Composer\Util\Filesystem;
-use Exception;
 use loophp\ComposerLocalRepoPlugin\Service\ManifestBuilder;
 use loophp\ComposerLocalRepoPlugin\Service\RepoBuilder;
 use Symfony\Component\Console\Command\Command;
@@ -46,16 +45,19 @@ final class BuildLocalRepo extends BaseCommand
         $manifestBuilder = new ManifestBuilder();
 
         if (false === $composer->getLocker()->isLocked()) {
-            throw new Exception('Composer lock file does not exist.');
+            $io->writeError(
+                '<error>The composer lock file (composer.lock) does not exist.</error>'
+            );
+
+            return Command::FAILURE;
         }
 
         $repoDir = $input->getArgument('repo-dir');
 
         if (false === is_dir($repoDir)) {
-            $io
-                ->writeError(
-                    '<error>The provided `repo-dir` argument is not a directory.</error>'
-                );
+            $io->writeError(
+                '<error>The provided `repo-dir` argument is not a directory.</error>'
+            );
 
             return Command::FAILURE;
         }
@@ -64,30 +66,35 @@ final class BuildLocalRepo extends BaseCommand
             $filepath = tempnam(sys_get_temp_dir(), '');
 
             if (false === $filepath) {
-                $io
-                    ->writeError(
-                        '<error>Unable to create temporary file.</error>'
-                    );
+                $io->writeError(
+                    '<error>Unable to create temporary file.</error>'
+                );
 
                 return Command::FAILURE;
             }
 
             try {
-                $manifestBuilder->build($composer, $repoDir, $filepath, $includeDevDeps);
+                $manifestBuilder->build(
+                    $composer,
+                    $repoDir,
+                    $filepath,
+                    $includeDevDeps
+                );
             } catch (Throwable $exception) {
-                $io
-                    ->writeError(
-                        sprintf('<error>Could not print manifest file: %s</error>', $exception->getMessage())
-                    );
+                $io->writeError(
+                    sprintf(
+                        '<error>Could not print manifest file: %s</error>',
+                        $exception->getMessage()
+                    )
+                );
 
                 return Command::FAILURE;
             }
 
             if (false === $fileContent = file_get_contents($filepath)) {
-                $io
-                    ->writeError(
-                        '<error>Unable to read temporary manifest file.</error>'
-                    );
+                $io->writeError(
+                    '<error>Unable to read temporary manifest file.</error>'
+                );
 
                 return Command::FAILURE;
             }
@@ -100,19 +107,23 @@ final class BuildLocalRepo extends BaseCommand
 
         if (false === $input->getOption('only-manifest')) {
             if (false === $repoDir = realpath($repoDir)) {
-                $io
-                    ->writeError(
-                        sprintf('<error>Target repository directory "%s" does not exist.</error>', $input->getArgument('repo-dir'))
-                    );
+                $io->writeError(
+                    sprintf(
+                        '<error>Target repository directory "%s" does not exist.</error>',
+                        $input->getArgument('repo-dir')
+                    )
+                );
 
                 return Command::FAILURE;
             }
 
             if (false === $fs->isDirEmpty($repoDir)) {
-                $io
-                    ->writeError(
-                        sprintf('<error>Target repository directory "%s" is not empty.</error>', $input->getArgument('repo-dir'))
-                    );
+                $io->writeError(
+                    sprintf(
+                        '<error>Target repository directory "%s" is not empty.</error>',
+                        $input->getArgument('repo-dir')
+                    )
+                );
 
                 return Command::FAILURE;
             }
@@ -124,33 +135,48 @@ final class BuildLocalRepo extends BaseCommand
                     $includeDevDeps
                 );
             } catch (Throwable $exception) {
-                $io
-                    ->writeError(
-                        sprintf('<error>Could not build repository: %s</error>', $exception->getMessage())
-                    );
+                $io->writeError(
+                    sprintf(
+                        '<error>Could not build repository: %s</error>',
+                        $exception->getMessage()
+                    )
+                );
 
                 return Command::FAILURE;
             }
 
             $io->write(
-                sprintf('<info>Local repository has been successfully created in %s</info>', $repoDir)
+                sprintf(
+                    '<info>Local repository has been successfully created in %s</info>',
+                    $repoDir
+                )
             );
         }
 
         if (false === $input->getOption('only-repo')) {
             try {
-                $manifestBuilder->build($composer, $repoDir, sprintf('%s/packages.json', $repoDir), $includeDevDeps);
+                $manifestBuilder->build(
+                    $composer,
+                    $repoDir,
+                    sprintf('%s/packages.json', $repoDir),
+                    $includeDevDeps
+                );
             } catch (Throwable $exception) {
-                $io
-                    ->writeError(
-                        sprintf('<error>Could not build manifest file: %s</error>', $exception->getMessage())
-                    );
+                $io->writeError(
+                    sprintf(
+                        '<error>Could not build manifest file: %s</error>',
+                        $exception->getMessage()
+                    )
+                );
 
                 return Command::FAILURE;
             }
 
             $io->write(
-                sprintf('<info>Local repository manifest "packages.json" has been successfully created in %s</info>', $repoDir)
+                sprintf(
+                    '<info>Local repository manifest "packages.json" has been successfully created in %s</info>',
+                    $repoDir
+                )
             );
         }
 
