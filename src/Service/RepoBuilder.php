@@ -7,23 +7,20 @@ namespace loophp\ComposerLocalRepoPlugin\Service;
 use Composer\Composer;
 use Composer\Downloader\DownloadManager;
 use Composer\Package\Loader\ArrayLoader;
-use Composer\Package\Locker;
 use Composer\Package\PackageInterface;
 use Composer\Util\Loop;
 use Exception;
-use Generator;
 use React\Promise\PromiseInterface;
 
-final class RepoBuilder
+final class RepoBuilder extends LocalBuilder
 {
     public function build(Composer $composer, string $destination, bool $includeDevDeps = true): void
     {
         $loop = $composer->getLoop();
-        $locker = $composer->getLocker();
         $loader = new ArrayLoader(null, true);
         $downloadManager = $composer->getDownloadManager();
 
-        foreach ($this->iterLockedPackages($locker, $includeDevDeps) as $packageInfo) {
+        foreach ($this->iterLockedPackages($composer->getLocker(), $includeDevDeps) as $packageInfo) {
             $this->downloadAndInstallPackageSync(
                 $loop,
                 $downloadManager,
@@ -66,33 +63,5 @@ final class RepoBuilder
         }
 
         $this->await($loop, $downloadManager->cleanup($type, $package, $path, $prevPackage));
-    }
-
-    /**
-     * @return Generator<int, array<string, mixed>>
-     */
-    private function iterLockedPackages(Locker $locker, bool $includeDevDeps = true): Generator
-    {
-        $data = $locker->getLockData();
-
-        $packages = $data['packages'] ?? [];
-        ksort($packages);
-
-        foreach ($packages as $packageInfo) {
-            ksort($packageInfo);
-
-            yield $packageInfo;
-        }
-
-        $devPackages = $data['packages-dev'] ?? [];
-        ksort($devPackages);
-
-        if (true === $includeDevDeps) {
-            foreach ($devPackages as $packageInfo) {
-                ksort($packageInfo);
-
-                yield $packageInfo;
-            }
-        }
     }
 }
