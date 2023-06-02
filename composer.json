@@ -5,18 +5,37 @@
     "type": "composer-plugin",
     "homepage": "https://github.com/drupol/composer-local-repo-plugin",
     "require": {
-        "php": "^8.0 || ^8.1",
+        "php": "^8.1",
         "composer-plugin-api": "^2"
     },
     "require-dev": {
-        "composer/composer": "^2.5"
+        "composer/composer": "^2.5",
+        "drupol/php-conventions": "^5.1",
+        "phpunit/phpunit": "^10.1"
     },
     "autoload": {
         "psr-4": {
             "loophp\\ComposerLocalRepoPlugin\\": "./src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "test\\loophp\\ComposerLocalRepoPlugin\\": "./test/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "ergebnis/composer-normalize": true,
+            "phpstan/extension-installer": true,
+            "phpro/grumphp": true
+        }
+    },
     "extra": {
         "class": "loophp\\ComposerLocalRepoPlugin\\Plugin"
+    },
+    "scripts": {
+        "test": [
+            "phpunit --configuration=test/phpunit.xml --testsuite=integration"
+        ]
     }
 }
