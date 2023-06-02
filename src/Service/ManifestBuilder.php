@@ -10,7 +10,7 @@ use Composer\Package\Loader\ArrayLoader;
 
 final class ManifestBuilder extends LocalBuilder
 {
-    public function build(Composer $composer, string $destination, bool $includeDevDeps = true): void
+    public function build(Composer $composer, string $destinationDir, string $filename, bool $includeDevDeps = true): void
     {
         $packages = [];
         $loader = new ArrayLoader(null, true);
@@ -35,7 +35,7 @@ final class ManifestBuilder extends LocalBuilder
             //
             // [1]: https://getcomposer.org/doc/05-repositories.md#packages>
             $packageInfo[$sourceOrigin] = 'path' !== $source['type']
-                ? ['type' => 'path', 'url' => sprintf('%s/%s/%s', $destination, $name, $version)] + $source
+                ? ['type' => 'path', 'url' => sprintf('%s/%s/%s', $destinationDir, $name, $version)] + $source
                 : $source;
 
             $packages[$name][$version] = $packageInfo;
@@ -43,6 +43,6 @@ final class ManifestBuilder extends LocalBuilder
 
         ksort($packages);
 
-        (new JsonFile($destination))->write(['packages' => $packages]);
+        (new JsonFile($filename))->write(['packages' => $packages]);
     }
 }

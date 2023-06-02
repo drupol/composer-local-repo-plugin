@@ -51,10 +51,19 @@ final class BuildLocalRepo extends BaseCommand
 
         $repoDir = $input->getArgument('repo-dir');
 
-        if (true === $input->getOption('only-print-manifest')) {
-            $destination = tempnam(sys_get_temp_dir(), '');
+        if (false === is_dir($repoDir)) {
+            $io
+                ->writeError(
+                    '<error>The provided `repo-dir` argument is not a directory.</error>'
+                );
 
-            if (false === $destination) {
+            return Command::FAILURE;
+        }
+
+        if (true === $input->getOption('only-print-manifest')) {
+            $filepath = tempnam(sys_get_temp_dir(), '');
+
+            if (false === $filepath) {
                 $io
                     ->writeError(
                         '<error>Unable to create temporary file.</error>'
@@ -64,7 +73,7 @@ final class BuildLocalRepo extends BaseCommand
             }
 
             try {
-                $manifestBuilder->build($composer, $destination, $includeDevDeps);
+                $manifestBuilder->build($composer, $repoDir, $filepath, $includeDevDeps);
             } catch (Throwable $exception) {
                 $io
                     ->writeError(
@@ -74,7 +83,7 @@ final class BuildLocalRepo extends BaseCommand
                 return Command::FAILURE;
             }
 
-            if (false === $fileContent = file_get_contents($destination)) {
+            if (false === $fileContent = file_get_contents($filepath)) {
                 $io
                     ->writeError(
                         '<error>Unable to read temporary manifest file.</error>'
@@ -84,7 +93,7 @@ final class BuildLocalRepo extends BaseCommand
             }
 
             $output->writeln($fileContent);
-            $fs->unlink($destination);
+            $fs->unlink($filepath);
 
             return Command::SUCCESS;
         }
@@ -130,7 +139,7 @@ final class BuildLocalRepo extends BaseCommand
 
         if (false === $input->getOption('only-repo')) {
             try {
-                $manifestBuilder->build($composer, sprintf('%s/packages.json', $repoDir), $includeDevDeps);
+                $manifestBuilder->build($composer, $repoDir, sprintf('%s/packages.json', $repoDir), $includeDevDeps);
             } catch (Throwable $exception) {
                 $io
                     ->writeError(

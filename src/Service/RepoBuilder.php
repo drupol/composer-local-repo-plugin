@@ -14,7 +14,7 @@ use React\Promise\PromiseInterface;
 
 final class RepoBuilder extends LocalBuilder
 {
-    public function build(Composer $composer, string $destination, bool $includeDevDeps = true): void
+    public function build(Composer $composer, string $destinationDir, bool $includeDevDeps = true): void
     {
         $loop = $composer->getLoop();
         $loader = new ArrayLoader(null, true);
@@ -24,7 +24,7 @@ final class RepoBuilder extends LocalBuilder
             $this->downloadAndInstallPackageSync(
                 $loop,
                 $downloadManager,
-                sprintf('%s/%s/%s', $destination, $packageInfo['name'], $packageInfo['version']),
+                sprintf('%s/%s/%s', $destinationDir, $packageInfo['name'], $packageInfo['version']),
                 $loader->load($packageInfo)
             );
         }
