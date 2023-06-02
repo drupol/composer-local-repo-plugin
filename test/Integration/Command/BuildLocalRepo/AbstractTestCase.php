@@ -48,8 +48,8 @@ abstract class AbstractTestCase extends Framework\TestCase
 
     final protected function tearDown(): void
     {
-        self::fileSystem()->remove(self::temporaryDirectory());
-        self::fileSystem()->remove(self::temporaryRepoDirectory());
+        // self::fileSystem()->remove(self::temporaryDirectory());
+        // self::fileSystem()->remove(self::temporaryRepoDirectory());
 
         chdir($this->currentWorkingDirectory);
     }

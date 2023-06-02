@@ -98,5 +98,20 @@ final class Test extends AbstractTestCase
             'Generating autoload files',
             $display
         );
+
+        self::assertDirectoryExists($tempDir);
+        self::assertFileExists($tempDir . '/packages.json');
+
+        $packages = json_decode(
+            (string) file_get_contents($tempDir . '/packages.json'),
+            true
+        );
+
+        self::assertCount(26, $packages['packages']);
+
+        foreach ($packages['packages'] as $versionPackage) {
+            $package = current($versionPackage);
+            self::assertDirectoryExists($package['dist']['url']);
+        }
     }
 }
