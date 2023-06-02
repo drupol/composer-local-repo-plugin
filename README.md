@@ -32,8 +32,6 @@ composer global require loophp/composer-local-repo-plugin
 
 ## Usage
 
-Create a local composer repository, for an existing package:
-
 1. Navigate to the package directory, or use the `--working-dir` option.
 2. Make sure the `composer.json` and `composer.lock` files are present.
 3. Generate the local repository using the command:
@@ -42,16 +40,25 @@ Create a local composer repository, for an existing package:
    manifest file `packages.json` in the same location. Use the `-r` or `-m`
    options to generate only a repository or a manifest file, respectively. For
    more details, refer to the command help: `composer build-local-repo --help`.
-4. Disable downloading from the `packagist.org` repository by entering the
-   command: `composer config repo.packagist false`.
-5. Integrate the newly created local `composer` repository into the
+4. The combination of the package sources and the local repository we just
+   created are now strictly enough to build the `vendor` directory necessary for
+   the package to work. Therefore at this stage, we can disable the network as
+   no further network access is required or you can use the environment variable
+   `COMPOSER_DISABLE_NETWORK` set to `1` to do so.
+5. Disable Packagist by entering the command:
+   `composer config repo.packagist false`.
+6. Integrate the newly created local `composer` repository into the
    `composer.json` file using the command:
    `composer config repo.local composer file:///path/to/local/reposity/packages.json`.
-6. At this stage, you can disable the network as no further network access is
-   required.
 7. Refresh the lock file using the command:
    `composer update --lock --no-install --no-scripts --no-plugins --no-interaction`.
 8. Finally, install the package by entering the command: `composer install`.
+
+## In Nix
+
+The plugin is used in Nix to build Composer based PHP packages. The combination
+of the source package and the local repository built with this plugin is unique
+and Nix uses that for ensuring reproducibility.
 
 ### Note
 
